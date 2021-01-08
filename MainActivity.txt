@@ -1,0 +1,97 @@
+package com.example.retrofitlibrary;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.os.Bundle;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.scalars.ScalarsConverterFactory;
+
+public class MainActivity extends AppCompatActivity {
+    RecyclerView recyclerview;
+    Context context;
+    ArrayList<MainData> mainDataArrayList = new ArrayList<>();
+    MyAdapter adapter;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        recyclerview = findViewById(R.id.recyclerview);
+        recyclerview.setLayoutManager(new GridLayoutManager(MainActivity.this,2));
+
+        MyAdapter adapter = new MyAdapter(mainDataArrayList, MainActivity.this);
+
+        recyclerview.setAdapter(adapter);
+
+        //get data
+        getData();
+    }
+
+    private void getData() {
+        final ProgressDialog progressDialog = new ProgressDialog(MainActivity.this);
+        progressDialog.setMessage("Plaese aweint...");
+        progressDialog.show();
+
+        //retrofit init()
+        Retrofit retrofit = new Retrofit.Builder().baseUrl("https://picsum.photos/").addConverterFactory(ScalarsConverterFactory.create()).build();
+        MainInterFace mainInterFace = retrofit.create(MainInterFace.class);
+        //init call
+        Call<String> stringCall = mainInterFace.STRING_CALL();
+
+        stringCall.enqueue(new Callback<String>() {
+            @Override
+            public void onResponse(Call<String> call, Response<String> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    progressDialog.dismiss();
+                    try {
+                        JSONArray jsonArray = new JSONArray(response.body());
+                        parseArray(jsonArray);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<String> call, Throwable t) {
+
+            }
+        });
+    }
+
+    private void parseArray(JSONArray jsonArray) {
+        mainDataArrayList.clear();
+        for (int i = 0; i < jsonArray.length(); i++) {
+            try {
+                JSONObject object = jsonArray.getJSONObject(i);
+
+                MainData mainData = new MainData();
+                mainData.setImage(object.getString("download_url"));
+                mainData.setName(object.getString("author"));
+
+                mainDataArrayList.add(mainData);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            adapter = new MyAdapter(mainDataArrayList, MainActivity.this);
+            recyclerview.setAdapter(adapter);
+        }
+
+    }
+}
